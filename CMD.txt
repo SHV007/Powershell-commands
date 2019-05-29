@@ -1,0 +1,244 @@
+See history commands: DOSKEY /history 
+or F7
+
+1. Find Internal Domain name:
+systeminfo | findstr /B /C:"Domain"
+also
+wmic computersystem get domain
+also
+echo %userdomain% --> Return the Domain without ".local",only the name itself.
+
+
+2. NSLOOKUP
+Type "nslookup" <enter>
+This will give you a ">" prompt.
+Type "set type=MX <enter>".
+Type the domain name <enter>.
+
+Same syntax in one command: nslookup -type=mx "Domain Name"
+
+Search for SPF record:
+nslookup -q=TXT [external domain name]
+Example: nslookup -q=TXT meteorit.co.il
+
+
+3. Set the default printer batch file:
+rundll32 printui.dll PrintUIEntry /y /n "printer name"
+Example: rundll32 printui.dll PrintUIEntry /y /n "Microsoft XPS Document Writer"
+
+4. How to find out which server is the DC:
+echo %LOGONSERVER%
+or
+nltest /dsgetdc:”Internal domain name” --> from example: nltest /dsgetdc:slavgroup.local
+or
+wmic.exe computersystem get domainrole --> In this case you'll get an output of a number:
+5 - Primary Domain Controller
+4 - Backup Domain Controller
+3 - Member Server
+2 - Standalone Server
+1 - Member Workstation
+0 - Standalone Workstation
+
+Find out the time server your'e synced with:
+w32tm /query /peers
+
+Sync time to Israel server:
+In elevated mode in CMD:
+w32tm /config /update /manualpeerlist:il.pool.ntp.org
+
+Resync with current servers:
+w32tm /resync
+
+
+5. How to find out whether a computer is physical or virtual:
+1. systeminfo
+2. In System Manufacturer line: If the computer is physical, it will show the motherboard brand name.If it's a VM it will show "VMware".
+
+Another way to determine weather a computer is a VM or physical:
+1. systeminfo | findstr /I model
+2. If it's a VM, it will show "VMware Virtual Platform". Else, it will show something similar to this: [01]: Intel64 Family 6 Model 23 Stepping 10 GenuineIntel ~2933 Mhz
+
+6. Copy-paste doesn't work.
+echo off | clip
+
+--DISM--
+
+Install Telnet Client:
+dism /online /Enable-Feature /FeatureName:TelnetClient
+
+How to display a list of Windows editions that an image can be changed/upgrade to:
+dism.exe /online /get-targeteditions
+
+How to display the edition of Windows:
+dism.exe /online /get-currentedition
+
+How to display information about the international settings and languages:
+dism.exe /online /get-intl
+
+Scan image to check for corruption:
+dism /online /cleanup-image /scanhealth
+OR
+dism /online /cleanup-image /checkhealth
+In "checkhealth", the command will report weather the image is health, repairable, or non-repairable. If the image is non-repairable, you should discard the image and start again. If the image is repairable, use "/restorehealth" argument to repair the image.
+NOTE: according to Microsoft, "/checkhealth", "/scanhealth" and "/restorehealth" can only be used in Windows 8 and later, or Windows Server 2012R2 or later, meanning that in earlier versions of Windows these arguments will not work.
+BUT: "/scanhealth" did work for me in windows 7, so give it a try anyway.
+
+--WINSXS--
+To reduce winsxs folder, use the next command:
+dism.exe /online /Cleanup-Image /StartComponentCleanup
+or
+dism /online /Cleanup-Image /SpSuperseded
+
+If "dism.exe" does not recognized, it's probably SBS 2008.
+Use the following command:
+compcln.exe
+
+Retrieve Disks info:
+wmic logicaldisk get Description, drivetype, DeviceID
+* Description = Local Fixed Disk or Network Connection (mapped drive), deviceID = Disk letter.
+drivetype = retrieve values by number:
+0 - Unknown, 1 - No Root directory, 2 - Removable Disk, 3 - Local Disk, 4 - Network Drive, 5 - Compact Disk, 6 - RAM Disk
+
+Retrieve CPU Model:
+wmic cpu get name
+
+Retrieve BIOS Version:
+wmic bios get smbiosbiosversion
+
+Retrieve Local machine Serial Number:
+wmic bios get serialnumber
+
+Retrieve RAM Information
+wmic MemoryChip get BankLabel, Capacity, MemoryType, TypeDetail, Speed
+
+Retrieve Remote machine Serial Number:
+wmic /node:remotehost bios get serialnumber -->WHERE [remotehost] is the remote machine hostname
+Ex: wmic /node:cyprusisr bios get serialnumber
+
+Retrieve Local computer model:
+(1)
+wmic csproduct get name
+(2)
+wmic csproduct get name, identifyingnumber
+
+
+Find weather a computer is a physical or a virtual machine:
+systeminfo
+Look for "System Manufacturer" line. If the machine is VM - it will show "vmware inc". If the machine is physical it will show to manufacturer model.
+
+Find weather a computer is a physical or a virtual machine (dedicated info):
+systeminfo | findstr /I model
+If the machine is VM - it will show "VMware VirtualPlatform". If the machine is physical it will show the manufacturer model.
+
+Another way:
+systeminfo /s %computername% | findstr /c:"Model:" /c:"Host Name" /c:"OS Name"
+In "System Model" field it will show "virtual box" or "vmware" if it's a virtual machine, otherwise it will show the real computer model.
+
+Another way (in powershell):
+get-wmiobject win32_computersystem | fl model
+That will show only one line - the model. It will show "virtual box" or "vmware" if it's a virtual machine, otherwise it will show the real computer model.
+
+Get NIC list and index number:
+wmic nic get name, index
+
+Enable NIC with index number: (eg: 7)
+wmic path win32_networkadapter where index=7 call enable
+
+Disable NIC with index number: (eg: 7)
+wmic path win32_networkadapter where index=7 call disable
+
+
+
+Delete IP address from CMD:
+netsh interface ipv4 delete address "[NIC's name" addr=[IP address]
+example: netsh interface ipv4 delete address "Local Area Connection" addr=192.168.1.168
+
+
+determine the domain controllers:
+nltest /dclist:contoso ---> Internal domain name
+Example: nltest /dclist:meteorit2.local
+
+Retrieve time server:
+w32tm /query /peers
+
+Remove Microsoft update:
+wusa /uninstall /kb:XXXXXXX /quiet /norestart
+*XXX refers to the actual Knowledge Base number.
+
+Change local computer name:
+WMIC computersystem where caption=’CURRENT‘ rename NEW
+* Replace 'CURRENT' current computer name. Change NEW with the new desired name.
+
+Change remote computer name:
+WMIC /node:”CURRENT” computersystem call rename “NEW“
+* Replace 'CURRENT' current computer name. Change NEW with the new desired name.
+
+Remove local printer:
+rundll32 printui.dll,PrintUIEntry /dl /n "printer-name" /c\computer-name
+*Replace "printer-name" with actual printer name. Replace computer-name with actual computer name.
+
+Windows Backup stop/start job:
+
+wbadmin stop job
+wbadmin start job
+-quiet		Runs the subcommand with no prompts to the user.
+Example:
+wbadmin stop job -quiet
+
+Find user's SID:
+wmic useraccount get name,sid
+That would retrieve all the users ever connected to this computer (need to verify this statement).
+If you know the username and would like to grab only that one user's SID, type the following command and replate "USER" with acutual username:
+
+wmic useraccount where name="USER" get sid
+
+Vice Versa (replace "sid number" with actual SID written between Apostrophes):
+wmic useraccount where sid="sid number" get name
+
+Another way to get SID:
+whoami /user
+
+Reduce size of a drive:
+powercfg.exe /hibernate off
+
+
+Check MTU:
+
+ping -f 8.8.8.8 -l [number]
+
+* MTU size for optimum network performance.
+
+68 to 1 500 bytes for static mode
+576 to 1 500 bytes for DHCP mode
+576 to 1 492 bytes for PPPoE mode
+larger frame sizes if supported by the FortiGate model - up to 9216 bytes for NP2, NP4, and NP6-accelerated interfaces
+
+If it's a PPPoE mode, try -l 1492, and lower until you get ping back. The number next to -l that you get ping back is the MTU configured on your network.
+
+Startup folder:
+These programs start up for the current logged in user only.
+shell:startup
+
+These programs start up for all users. To open this folder:
+shell:common startup
+
+Windows Version:
+winver
+
+How to find out who has your FSMO Roles?
+NetDOM /query FSMO
+
+Get all DC servers in a specific:
+nltest /dclist:%userdomain%
+
+Find which DC a computer is authenticated to:
+echo %logonserver%
+OR
+set L
+
+
+Cancel scheduled chkdsk:
+chkntfs /x C:
+
+Sync clock with fortigurad:
+w32tm /config /manualpeerlist:FORTIGATE IP /syncfromflags:manual /reliable:yes /update
