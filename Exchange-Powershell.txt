@@ -1,0 +1,31 @@
+# giving folder permission of a calendar from "x" -user to "y" -identity 
+add-mailboxfolderpermission -identity 'alias':\calendar -user 'alias' -accessrights Owner
+
+# exporting an attribute (includes of a full mail lists of users and their names) to gridview and can work with " | export-csv"
+get-mailbox -Filter {CustomAttribute1 -eq 'Itzik Vaknin'} | Select-Object Name,PrimarySmtpAddress,CustomAttribute2 | Out-GridView
+
+# syncing between AD and 365
+Start-ADSyncSyncCycle -PolicyType Delta
+
+# connect to a 365 exchange-powershell from a local powershell
+set-executionpolicy remotesigned
+#then
+$usercredential = get-credential
+#after that you'll need to add the following syntax
+$session = new-pssession -ConfigurationName microsoft.exchange -connectionuri https://outlook.office365.com/powershell-liveid/ -credential $usercredential -authentication basic -allowredirection
+#at the end run the following command
+impot-pssession $session -disablenamechecking
+#don't forget to log out after finishing
+remove-pssession $session
+????????????????????????? - a sign that combining 2 diffrent scripts that are working together 
+# this command is followed by the syntax above. it's for changing the email username (meant for "onmicrosoft" scenario)
+set-mailbox "longname.lastname"@domain.here -MicrosoftOnlineServicesID "shortname.lastname"@domain.here
+
+# show details about user mailbox
+get-mailboxstatistics [username] | ft DisplayName, TotalItemSize, ItemCount
+
+# export to pst from Exchange Powershell
+get-mailboxexportrequest -mailbox [username] -Filepath "\\exch1501\PSTfileshare\[username].pst
+
+# grant full access to the -user mailbox from the -identity
+add-mailboxpermission -identity "alias" -user "alias" -accessrights fullaccess -inheritancetype all

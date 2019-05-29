@@ -1,0 +1,167 @@
+***Open Powershell as administrator***
+
+Import Exchange Module:
+2007 - Add-PSSnapin Microsoft.Exchange.Management.PowerShell.Admin;
+2010 - Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010;
+2013 & 2016 - Add-PSSnapin Microsoft.Exchange.Management.PowerShell.SnapIn;
+
+Import Active Directory Module:
+1. To install the module:
+Import-Module ServerManager
+Add-WindowsFeature RSAT-AD-PowerShell
+2. After installation, you can import the module:
+Import-Module ActiveDirectory
+*NOTE: your profile script will only run if your PowerShell execution policy is set to RemoteSigned or Unrestricted. If you didn’t change the default execution policy, you can configure it with this command:
+Set-ExecutionPolicy RemoteSigned
+or
+Set-ExecutionPolicy Unrestricted
+
+To get execution policy status:
+Get-ExecutionPolicy
+
+The execution policies you can use are:
+
+Restricted - Scripts won’t run.
+RemoteSigned - Scripts created locally will run, but those downloaded from the Internet will not (unless they are digitally signed by a trusted publisher).
+AllSigned - Scripts will run only if they have been signed by a trusted publisher.
+Unrestricted - Scripts will run regardless of where they have come from and whether they are signed.
+
+$allDisabldAccounts = (Search-ADAccount -AccountDisabled).count
+Write-Output "Disabled accounts:`t`t $allDisabldAccounts"
+$all = (get-aduser -Filter *).count
+$allactive = $all - $allDisabldAccounts
+Write-Output "Active Accounts:`t`t $allactive"
+Write-Output "All Accounts:`t`t`t $all"
+
+Retrieve version:
+$PSVersionTable.PSVersion
+
+Retrieve single computer last logon date:
+Get-ADComputer to retrieve computer last logon date:
+The command: Get-ADComputer -identity SBS2K11 -Properties * | FT Name, LastLogonDate
+*Change SBS2K11 to actual computer name.
+
+Retrieve all AD computers last logon date:
+get-adcomputer -filter * -properties * | ft name, lastlogondate -autosize
+
+*Make sure you open Powershell with Active Directory module
+
+Retrieve all AD users last logon date:
+get-aduser -filter * -properties * | ft name, lastlogondate -autosize
+
+*Make sure you open Powershell with Active Directory module
+
+** The "-autosize" reorder the list with last logon date closer to computer name (smaller table).
+
+Get Last Boot Up Time (Powershell v2.0):
+In Powershell 3.0:
+Get-CimInstance -ClassName win32_operatingsystem | select csname, lastbootuptime
+
+
+In Powershell <=2.0:
+Get-WmiObject win32_operatingsystem | select csname, @{LABEL=’LastBootUpTime’;EXPRESSION={$_.ConverttoDateTime($_.lastbootuptime)}}
+
+In Powershell v1.0:
+Clear-Host
+$Booted = (Get-WmiObject Win32_OperatingSystem).LastBootUpTime
+[Management.ManagementDateTimeConverter]::ToDateTime($Booted)
+
+
+
+Send Email using Powershell 2.0:
+
+Set SMTP Server: $PSEmailServer = "fmg1.meteorit.co.il"
+Send mail:  send-mailmessage -from "erans@meteorit.co.il" -to "tzahi@meteorit.co.il" -subject "Test from PS" -body "Test Message"
+
+Send Email using Powershell 1.0
+
+$smtp = New-Object Net.Mail.SmtpClient("fmg1.meteorit.co.il")
+$smtp.Send("erans@meteorit.co.il","erans@meteorit.co.il","Test Email","This is a test")
+
+
+Exchange Grant Send on behalf permissions for a Distribution Group:
+
+Set-DistributionGroup "Sales Team" -GrantSendOnBehalfTo alan.reid
+
+
+Grant the Send on Behalf Permission to all members of the group:
+Set-DistributionGroup "Sales Team" -GrantSendOnBehalfTo "Sales Team"
+
+
+Exchange attachment size limit – where to find it and how to change it?
+Open Exchange Management Shell, type:
+get-transportconfig | ft maxsendsize, maxreceivesize 
+get-receiveconnector | ft name, maxmessagesize 
+get-sendconnector | ft name, maxmessagesize 
+get-mailbox Administrator |ft Name, Maxsendsize, maxreceivesize
+
+
+Counting all Enabled Users in AD
+
+(get-aduser -filter *|where {$_.enabled -eq "True"}).count
+
+
+Counting all Disabled Users in AD
+
+(get-aduser -filter *|where {$_.enabled -ne "False"}).count
+
+
+Counting all Enabled and Disabled Users in AD:
+
+
+Get all users in an ADGroup with the displayname
+Get-ADGroupMember -identity "GROUPNAME" -Recursive | foreach{ get-aduser $_} | select SamAccountName,objectclass,name
+OR
+$users = Get-ADGroupMember -Identity 'Group Name'
+$users.count
+OR if you want in one line of code:
+(Get-ADGroup "Terminal users - Office" -properties *).member.count
+
+Removing mobile phone device when GUI doesn't work (relevant for error: "THE ACTIVESYNCDEVICE CANNOT BE FOUND” in Exchange 2010):
+1. Open the Exchange Management Shell
+2. Run the following cmdlet: Get-ActiveSyncDeviceStatistics -Mailbox emailaddress@yourdomain.com
+3. Find the device you want to remove, and copy paste the GUID
+4. Run the following cmdlet: Remove-ActiveSyncDevice -Id 0215da00-227e-4470-a498-e4a44615a223  (replace the guid with your GUID)
+* Taken from URL: http://www.itexperience.net/2014/07/18/activesyncdevice-found-exchange-2010-removing/
+
+Retrieve AD users:
+Get-ADUser -Filter * -SearchBase "dc=gerson,dc=local" -ResultPageSize 0 -Prop CN,samaccountname,enabled,lastLogonTimestamp | Select CN,samaccountname,enabled,@{n="lastLogonDate";e={[datetime]::FromFileTime($_.lastLogonTimestamp)}}  | ft -AutoSize
+
+* Change the "dc=gerson,dc=local" to the actual local domain name that you want to retrieve the users from.
+To find it: right click on "computer" and "properties".
+
+Retrieve mailboxes list of a specific domain:
+GET-MAILBOX * | where { $_.PrimarySMTPAddress.Domain -eq 'mydomain.com' }
+
+* If you get the error "Get-Mailbox does not recognized.."
+-install the Exchange Management Tools from the Exchange installation media
+-Import the Exchange module into your Powershell session
+To do this:
+Exchange 2007: Add-PSSnapin Microsoft.Exchange.Management.PowerShell.Admin;
+Exchange 2010: Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010;
+Exchange 2013: Add-PSSnapin Microsoft.Exchange.Management.PowerShell.SnapIn;
+**And Your Exchange Server already has "Exchange Powershell"
+
+Retrieve Mailbox count of a specific domain:
+get-mailbox -resultsize unlimited | where {$_.primarysmtpaddress -like "*@ntweekly.com"} | Measure-Object
+
+Get Mailboxes with Size Greater Than X with Item count, Storage Limit Status and Last logon time:
+get-mailbox -database "Mailbox Database 2" | Get-MailboxStatistics | where {$_.TotalItemSize -ge 5GB}
+
+* The "Mailbox Database 2" is the name of the database, and can be in different name from server to server.
+** If there are display names in hebrew - powershell will display it in Gibberish. In order to show the Hebrew display names, expoert the list into a .csv file encoded in UTF:
+add " | Export-Csv c:\example\mailbox_export_example.csv -Encoding UTF8" without the quotes.
+Example: get-mailbox -database "Mailbox Database 2" | Get-MailboxStatistics | where {$_.TotalItemSize -ge 5GB} | Export-Csv c:\example\mailbox_export_example.csv -Encoding UTF8
+Then, open the file in Excel and you can read the Hebrew display names.
+
+Also, you can try this if you want to see wich mailbox is greater than X size AND to see the actual size in descending list:
+get-mailbox -resultsize unlimited | Get-MailboxStatistics | Where {$_.TotalItemSize -Gt 1GB} | Sort-Object -Property TotalItemSize -Descending | Format-Table DisplayName, TotalItemSize
+
+Add the Exchange PowerShell module into a standard PowerShell session:
+2007: Add-PSSnapin Microsoft.Exchange.Management.PowerShell.Admin;
+2010: Add-PSSnapin Microsoft.Exchange.Management.PowerShell.E2010;
+2013 & 2016: Add-PSSnapin Microsoft.Exchange.Management.PowerShell.SnapIn;
+
+In Powershell, all previous commands are saved. You can watch them by typing the "up" arrow in keyboard. Unlike CMD, when PS window is closed it doesn't clear the cache, so once a new PS windows is open, you still return previous commands with the "up" arrow key.
+To clear Powershell cache (all previous commands):
+Remove-Variable * -ErrorAction SilentlyContinue; Remove-Module *; $error.Clear(); Clear-Host
