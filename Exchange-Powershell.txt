@@ -29,3 +29,8 @@ get-mailboxexportrequest -mailbox [username] -Filepath "\\exch1501\PSTfileshare\
 
 # grant full access to the -user mailbox from the -identity
 add-mailboxpermission -identity "alias" -user "alias" -accessrights fullaccess -inheritancetype all
+
+# determining exchange version in exchange 
+Get-ExchangeServer | fl name,edition,admindisplayversion
+
+
