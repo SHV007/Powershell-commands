@@ -25,7 +25,7 @@ set-mailbox "longname.lastname"@domain.here -MicrosoftOnlineServicesID "shortnam
 get-mailboxstatistics [username] | ft DisplayName, TotalItemSize, ItemCount
 
 # export to pst from Exchange Powershell
-get-mailboxexportrequest -mailbox [username] -Filepath "\\exch1501\PSTfileshare\[username].pst
+new-mailboxexportrequest -mailbox [username] -Filepath "\\exch1501\PSTfileshare\[username].pst
 
 # grant full access to the -user mailbox from the -identity
 add-mailboxpermission -identity "alias" -user "alias" -accessrights fullaccess -inheritancetype all
