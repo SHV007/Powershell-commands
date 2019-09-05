@@ -1,0 +1,2 @@
+#syncing between AD and office 365
+Start-ADSyncSyncCycle -PolicyType Delta
