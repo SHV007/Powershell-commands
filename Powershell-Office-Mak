@@ -1,0 +1,5 @@
+# go to the right directory:
+cd c:\program files\microsoft office\officeX
+
+# write down this syntax:
+cscript ospp.vbs /act
